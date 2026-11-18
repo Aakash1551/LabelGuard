@@ -47,10 +47,11 @@ const complianceFindingSchema = new mongoose.Schema({
   confidenceScore: { type: Number, default: 1.0 },
   explanation: { type: String, required: true },
   legalCitation: { type: String, required: true },
+  manualReviewRecommendation: { type: String, default: null },
 }, { _id: true, timestamps: { createdAt: true, updatedAt: false } });
 
 const inspectionReportSchema = new mongoose.Schema({
-  reportNumber: { type: String, required: true, unique: true },
+  reportNumber: { type: String, required: true, index: { unique: true, sparse: true } },
   pdfFilePath: { type: String, required: true },
   fileSizeBytes: { type: Number, required: true },
   sha256Hash: { type: String, required: true },
@@ -158,7 +159,24 @@ const inspectionSchema = new mongoose.Schema(
         } else {
           ret.extracted_declarations = [];
         }
-        ret.findings = ret.findings || [];
+        if (ret.findings) {
+          ret.findings = ret.findings.map((f) => ({
+            id: f._id ? f._id.toString() : f.id,
+            rule_id: f.ruleId ? f.ruleId.toString() : null,
+            rule_code: f.ruleCode,
+            field_name: f.fieldName,
+            status: f.status,
+            detected_evidence: f.detectedEvidence,
+            expected_format: f.expectedFormat,
+            confidence_score: f.confidenceScore,
+            explanation: f.explanation,
+            legal_citation: f.legalCitation,
+            manual_review_recommendation: f.manualReviewRecommendation,
+            created_at: f.createdAt,
+          }));
+        } else {
+          ret.findings = [];
+        }
         delete ret._id;
         delete ret.__v;
         return ret;

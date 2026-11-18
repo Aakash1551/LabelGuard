@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const Inspection = require('../models/Inspection');
 const Product = require('../models/Product');
 const { processImageWithAI, extractDeclarationsFromTokens } = require('../services/aiService');
+const { evaluateInspectionCompliance } = require('../services/compliance/decisionEngine');
 const { verifyImageMagicBytes } = require('../middleware/upload');
 
 // Helper to generate compliant inspection numbers: INS-YYYYMMDD-XXXX
