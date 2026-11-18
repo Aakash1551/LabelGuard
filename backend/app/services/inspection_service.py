@@ -1,5 +1,6 @@
 import os
 import uuid
+import logging
 import datetime
 import secrets
 from typing import List, Tuple
@@ -9,8 +10,11 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.models.inspection import Inspection, InspectionImage
+from app.models.inspection import Inspection, InspectionImage, OCRToken
 from app.image_processing.pipeline import ImagePreprocessor
+from app.ocr.engine import OCREngine
+
+logger = logging.getLogger("labelguard.inspection_service")
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -58,6 +62,7 @@ class InspectionService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.preprocessor = ImagePreprocessor()
+        self.ocr_engine = OCREngine()
 
     async def create_inspection_with_images(
         self,
@@ -68,11 +73,12 @@ class InspectionService:
     ) -> Inspection:
         """
         Processes multi-panel package uploads:
-        1. Validates files and signatures.
+        1. Validates files and binary signatures.
         2. Creates an Inspection record in the database.
         3. Saves raw images to storage.
         4. Runs OpenCV preprocessing (orientation, CLAHE, deskewing, sharpening).
-        5. Saves preprocessed images and associates records.
+        5. Runs PaddleOCR text detection + recognition on preprocessed images.
+        6. Persists OCRToken records with bounding polygons and confidence scores.
         """
         if not files_with_panels:
             raise HTTPException(
@@ -113,7 +119,7 @@ class InspectionService:
                     detail=f"File '{upload_file.filename}' exceeds maximum allowed size of 15MB."
                 )
 
-            # File names
+            # File names — UUID prevents path traversal and collisions
             file_uuid = str(uuid.uuid4())
             raw_filename = f"raw_{file_uuid}.jpg"
             raw_path = os.path.join(target_dir, raw_filename)
@@ -130,7 +136,7 @@ class InspectionService:
                 width = prep_result.processed_width
                 height = prep_result.processed_height
             except Exception as e:
-                # Fallback to raw if CV processing fails on an extreme edge-case
+                logger.warning(f"CV preprocessing failed for {upload_file.filename}: {e}")
                 prep_path = raw_path
                 width, height = None, None
 
@@ -151,6 +157,31 @@ class InspectionService:
                 height_px=height
             )
             self.db.add(image_record)
+            await self.db.flush()  # Generate image_record.id for OCRToken FK
+
+            # ── Phase 4: Run PaddleOCR on the preprocessed image ──
+            try:
+                ocr_result = self.ocr_engine.extract_text(prep_path)
+                logger.info(
+                    f"OCR completed for panel {panel_type}: "
+                    f"{ocr_result.total_tokens} tokens, "
+                    f"avg confidence {ocr_result.avg_confidence:.3f}"
+                )
+
+                for token_data in ocr_result.tokens:
+                    ocr_token = OCRToken(
+                        image_id=image_record.id,
+                        detected_text=token_data.text,
+                        confidence=token_data.confidence,
+                        polygon_bbox=token_data.normalized_bbox,  # Store normalized [0-1]
+                        line_index=token_data.line_index,
+                    )
+                    self.db.add(ocr_token)
+
+            except Exception as e:
+                logger.error(f"OCR failed for {upload_file.filename}: {e}", exc_info=True)
+                # Non-fatal: inspection continues without OCR for this panel.
+                # The compliance engine will flag it as REQUIRES_MANUAL_REVIEW.
 
         await self.db.commit()
 
