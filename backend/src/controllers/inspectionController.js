@@ -129,6 +129,31 @@ const uploadPackagingImages = async (req, res) => {
   }
 };
 
+// @desc    Get dashboard inspection analytics/metrics
+// @route   GET /api/v1/inspections/stats
+const getInspectionStats = async (req, res) => {
+  try {
+    const total = await Inspection.countDocuments();
+    const compliant = await Inspection.countDocuments({ status: 'COMPLIANT' });
+    const nonCompliant = await Inspection.countDocuments({ status: 'POTENTIALLY_NON_COMPLIANT' });
+    const manualReview = await Inspection.countDocuments({ status: 'REQUIRES_MANUAL_REVIEW' });
+    const processing = await Inspection.countDocuments({ status: 'PROCESSING' });
+
+    const complianceRate = total > 0 ? Number(((compliant / total) * 100).toFixed(1)) : 0.0;
+
+    return res.status(200).json({
+      total_inspections: total,
+      compliant_count: compliant,
+      potentially_non_compliant_count: nonCompliant,
+      requires_manual_review_count: manualReview,
+      processing_count: processing,
+      compliance_rate: complianceRate,
+    });
+  } catch (err) {
+    return res.status(500).json({ detail: err.message });
+  }
+};
+
 // @desc    List conducted inspections
 // @route   GET /api/v1/inspections
 const listInspections = async (req, res) => {
@@ -232,6 +257,7 @@ const triggerExtraction = async (req, res) => {
 module.exports = {
   uploadPackagingImages,
   listInspections,
+  getInspectionStats,
   getInspection,
   getInspectionDeclarations,
   triggerExtraction,

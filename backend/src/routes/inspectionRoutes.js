@@ -2,6 +2,7 @@ const express = require('express');
 const {
   uploadPackagingImages,
   listInspections,
+  getInspectionStats,
   getInspection,
   getInspectionDeclarations,
   triggerExtraction,
@@ -19,6 +20,7 @@ const router = express.Router();
 
 router.post('/upload', protect, upload.array('files', 10), uploadPackagingImages);
 router.get('/', protect, listInspections);
+router.get('/stats', protect, getInspectionStats);
 router.get('/:id', protect, getInspection);
 router.get('/:id/declarations', protect, getInspectionDeclarations);
 router.post('/:id/extract', protect, triggerExtraction);
