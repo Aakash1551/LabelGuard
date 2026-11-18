@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # Security
-    SECRET_KEY: str = "labelguard_super_secret_production_key_change_in_production_32bytes!"
+    SECRET_KEY: str = "labelguard_super_secret_dev_key_32bytes_min_for_hs256!"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER_FULLNAME: str = "LabelGuard Chief Inspector"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "backend/.env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore"

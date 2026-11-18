@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, users, products, rules
+from app.api.v1.endpoints import health, auth, users, products, rules, inspections
 
 api_router = APIRouter()
 
@@ -8,3 +8,4 @@ api_router.include_router(auth.router, prefix="/auth", tags=["Authentication & A
 api_router.include_router(users.router, prefix="/users", tags=["User Administration"])
 api_router.include_router(products.router, prefix="/products", tags=["Product Catalog"])
 api_router.include_router(rules.router, prefix="/rules", tags=["Compliance Rules Catalog"])
+api_router.include_router(inspections.router, prefix="/inspections", tags=["Packaging Inspections"])
