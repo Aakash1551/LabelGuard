@@ -1,13 +1,14 @@
 import os
 import uuid
 import logging
-from typing import Optional, List
-from fastapi import FastAPI, HTTPException, status, UploadFile, File, Form
+from typing import Optional, List, Dict, Any
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.image_processing.pipeline import ImagePreprocessor
 from app.ocr.engine import OCREngine
+from app.extraction.engine import extract_all_declarations
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,8 +18,8 @@ logger = logging.getLogger("labelguard.ai_service")
 
 app = FastAPI(
     title="LabelGuard AI Microservice",
-    description="Dedicated Computer Vision (OpenCV) and OCR (RapidOCR PP-OCRv4 ONNX) Microservice",
-    version="1.0.0"
+    description="Dedicated Computer Vision, RapidOCR (PP-OCRv4 ONNX), and Statutory Declaration Extraction Microservice",
+    version="1.1.0"
 )
 
 app.add_middleware(
@@ -39,6 +40,10 @@ class ProcessPathRequest(BaseModel):
     output_path: Optional[str] = None
 
 
+class ExtractDeclarationsRequest(BaseModel):
+    tokens: List[Dict[str, Any]]
+
+
 @app.get("/health")
 def health_check():
     return {
@@ -46,7 +51,8 @@ def health_check():
         "service": "LabelGuard AI Microservice",
         "engines": {
             "cv": "OpenCV Headless",
-            "ocr": "RapidOCR PP-OCRv4 (ONNX Runtime)"
+            "ocr": "RapidOCR PP-OCRv4 (ONNX Runtime)",
+            "extraction": "PCR 2011 Rule 6 Statutory Parser"
         }
     }
 
@@ -57,7 +63,8 @@ async def process_image_by_path(payload: ProcessPathRequest):
     Processes an existing image on disk:
     1. Runs OpenCV preprocessing (CLAHE, deskew, dimension clamp, sharpening).
     2. Runs RapidOCR text detection and recognition.
-    3. Returns structured tokens with normalized coordinates.
+    3. Extracts statutory declarations (Rule 6: MRP, Net Qty, USP, Dates, Packer, Care, Origin).
+    4. Returns structured tokens with normalized coordinates and extracted declarations.
     """
     input_path = payload.image_path
     if not os.path.exists(input_path):
@@ -84,7 +91,6 @@ async def process_image_by_path(payload: ProcessPathRequest):
         ocr_res = ocr_engine.extract_text(output_path)
     except Exception as e:
         logger.error(f"OCR error on {output_path}: {e}", exc_info=True)
-        # Graceful fallback: return empty tokens rather than failing HTTP
         ocr_res = None
 
     tokens_data = []
@@ -98,6 +104,9 @@ async def process_image_by_path(payload: ProcessPathRequest):
                 "line_index": t.line_index
             })
 
+    # Execute Statutory Declaration Extraction Engine (Phase 5)
+    declarations = extract_all_declarations(tokens_data)
+
     return {
         "success": True,
         "original_width": prep_res.original_width,
@@ -109,5 +118,21 @@ async def process_image_by_path(payload: ProcessPathRequest):
         "processing_time_ms": prep_res.processing_time_ms,
         "preprocessed_image_path": output_path,
         "total_tokens": len(tokens_data),
-        "tokens": tokens_data
+        "tokens": tokens_data,
+        "total_declarations": len(declarations),
+        "declarations": declarations
+    }
+
+
+@app.post("/api/v1/extract-declarations")
+async def extract_declarations_endpoint(payload: ExtractDeclarationsRequest):
+    """
+    Extracts statutory declarations from arbitrary token lists (e.g. aggregated across multiple panels).
+    """
+    declarations = extract_all_declarations(payload.tokens)
+    return {
+        "success": True,
+        "total_tokens": len(payload.tokens),
+        "total_declarations": len(declarations),
+        "declarations": declarations
     }

@@ -33,6 +33,25 @@ const processImageWithAI = async (rawImagePath, prepImagePath) => {
       processed_width: null,
       processed_height: null,
       tokens: [],
+      declarations: [],
+    };
+  }
+};
+
+const extractDeclarationsFromTokens = async (tokens) => {
+  try {
+    const response = await axios.post(
+      `${AI_SERVICE_URL}/api/v1/extract-declarations`,
+      { tokens },
+      { timeout: 15000 }
+    );
+    return response.data;
+  } catch (err) {
+    console.error('[AIService] Failed to extract declarations from tokens:', err.message);
+    return {
+      success: false,
+      error: err.message,
+      declarations: [],
     };
   }
 };
@@ -46,4 +65,4 @@ const checkAIHealth = async () => {
   }
 };
 
-module.exports = { processImageWithAI, checkAIHealth };
+module.exports = { processImageWithAI, extractDeclarationsFromTokens, checkAIHealth };

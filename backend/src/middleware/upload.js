@@ -56,4 +56,8 @@ const validateMagicBytes = (buffer, filename) => {
   return 'image/webp';
 };
 
-module.exports = { upload, validateMagicBytes };
+module.exports = {
+  upload,
+  validateMagicBytes,
+  verifyImageMagicBytes: validateMagicBytes,
+};

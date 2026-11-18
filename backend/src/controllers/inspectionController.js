@@ -1,61 +1,62 @@
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 const Inspection = require('../models/Inspection');
 const Product = require('../models/Product');
-const { validateMagicBytes } = require('../middleware/upload');
-const { processImageWithAI } = require('../services/aiService');
+const { processImageWithAI, extractDeclarationsFromTokens } = require('../services/aiService');
+const { verifyImageMagicBytes } = require('../middleware/upload');
 
+// Helper to generate compliant inspection numbers: INS-YYYYMMDD-XXXX
 const generateInspectionNumber = () => {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const randomSuffix = crypto.randomBytes(2).toString('hex').toUpperCase();
-  return `INS-${dateStr}-${randomSuffix}`;
+  const randomHex = crypto.randomBytes(2).toString('hex').toUpperCase();
+  return `INS-${dateStr}-${randomHex}`;
 };
 
-// @desc    Upload multi-panel packaging images, preprocess with CV, run RapidOCR, save to DB
+// @desc    Upload multi-panel packaging images and process OCR + Declaration Extraction
 // @route   POST /api/v1/inspections/upload
 const uploadPackagingImages = async (req, res) => {
   try {
     const files = req.files;
     if (!files || files.length === 0) {
-      return res.status(400).json({ detail: 'No files were provided for inspection.' });
+      return res.status(400).json({ detail: 'At least one packaging panel image is required.' });
     }
 
-    const { panels, product_id, productId, notes } = req.body;
-    const linkedProductId = product_id || productId || null;
+    // Verify magic bytes for all files
+    for (const file of files) {
+      verifyImageMagicBytes(file.buffer, file.originalname);
+    }
 
-    // Parse panel assignments
+    const inspectorId = req.user._id;
+    const { product_id, notes, panels } = req.body;
+
     let parsedPanels = [];
     if (panels) {
       try {
-        const loaded = JSON.parse(panels);
-        if (Array.isArray(loaded)) parsedPanels = loaded.map((p) => String(p).toUpperCase());
-      } catch (e) {
-        parsedPanels = panels.split(',').map((p) => p.trim().toUpperCase()).filter(Boolean);
+        parsedPanels = typeof panels === 'string' ? JSON.parse(panels) : panels;
+      } catch (_) {
+        parsedPanels = [panels];
       }
     }
 
-    const defaultPanels = ['FRONT', 'BACK', 'LEFT', 'RIGHT', 'TOP', 'BOTTOM', 'BULK'];
-    const inspectionNumber = generateInspectionNumber();
+    const defaultPanels = ['FRONT', 'BACK', 'LEFT', 'RIGHT', 'TOP', 'BOTTOM'];
 
-    // 1. Create inspection document
     const inspection = new Inspection({
-      inspectionNumber,
-      productId: linkedProductId,
-      inspectorId: req.user._id,
+      inspectionNumber: generateInspectionNumber(),
+      productId: product_id || null,
+      inspectorId,
       status: 'PROCESSING',
-      overallScore: 0.0,
-      notes: notes || null,
+      notes: notes || '',
       images: [],
+      extractedDeclarations: [],
     });
 
-    const targetDir = path.join('uploads', 'packaging', inspection._id.toString());
+    const targetDir = path.join(process.cwd(), 'uploads', 'packaging', inspection._id.toString());
     fs.mkdirSync(targetDir, { recursive: true });
 
-    // 2. Process each image with binary verification and AI microservice
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const verifiedMime = validateMagicBytes(file.buffer, file.originalname);
+      const verifiedMime = verifyImageMagicBytes(file.buffer, file.originalname);
 
       let panelType = 'OTHER';
       if (i < parsedPanels.length) {
@@ -73,7 +74,7 @@ const uploadPackagingImages = async (req, res) => {
       // Write raw file to disk
       fs.writeFileSync(rawPath, file.buffer);
 
-      // Call Python AI microservice (OpenCV + RapidOCR)
+      // Call Python AI microservice (OpenCV + RapidOCR + Extraction)
       const aiResult = await processImageWithAI(rawPath, prepPath);
 
       const relRawPath = path.relative(process.cwd(), rawPath).replace(/\\/g, '/');
@@ -101,6 +102,22 @@ const uploadPackagingImages = async (req, res) => {
         heightPx: aiResult.processed_height || null,
         ocrTokens,
       });
+
+      const addedImage = inspection.images[inspection.images.length - 1];
+
+      // Map extracted declarations from this panel
+      if (Array.isArray(aiResult.declarations) && aiResult.declarations.length > 0) {
+        for (const decl of aiResult.declarations) {
+          inspection.extractedDeclarations.push({
+            fieldType: decl.field_type,
+            rawText: decl.raw_text,
+            parsedValue: decl.parsed_value,
+            confidence: decl.confidence,
+            primaryBbox: decl.primary_bbox,
+            sourceImageId: addedImage._id,
+          });
+        }
+      }
     }
 
     await inspection.save();
@@ -149,4 +166,72 @@ const getInspection = async (req, res) => {
   }
 };
 
-module.exports = { uploadPackagingImages, listInspections, getInspection };
+// @desc    Get extracted declarations for an inspection
+// @route   GET /api/v1/inspections/:id/declarations
+const getInspectionDeclarations = async (req, res) => {
+  try {
+    const inspection = await Inspection.findById(req.params.id);
+    if (!inspection) {
+      return res.status(404).json({ detail: `Inspection '${req.params.id}' not found.` });
+    }
+
+    const json = inspection.toJSON();
+    return res.status(200).json(json.extracted_declarations);
+  } catch (err) {
+    return res.status(500).json({ detail: err.message });
+  }
+};
+
+// @desc    Trigger/re-run declaration extraction across all panels of an inspection
+// @route   POST /api/v1/inspections/:id/extract
+const triggerExtraction = async (req, res) => {
+  try {
+    const inspection = await Inspection.findById(req.params.id);
+    if (!inspection) {
+      return res.status(404).json({ detail: `Inspection '${req.params.id}' not found.` });
+    }
+
+    // Collect all tokens across all panels
+    const allTokens = [];
+    for (const img of inspection.images) {
+      for (const t of img.ocrTokens) {
+        allTokens.push({
+          text: t.detectedText,
+          confidence: t.confidence,
+          polygon_bbox: t.polygonBbox,
+          normalized_bbox: t.normalizedBbox,
+          line_index: t.lineIndex,
+        });
+      }
+    }
+
+    const aiRes = await extractDeclarationsFromTokens(allTokens);
+
+    inspection.extractedDeclarations = [];
+    if (aiRes.declarations) {
+      for (const decl of aiRes.declarations) {
+        inspection.extractedDeclarations.push({
+          fieldType: decl.field_type,
+          rawText: decl.raw_text,
+          parsedValue: decl.parsed_value,
+          confidence: decl.confidence,
+          primaryBbox: decl.primary_bbox,
+          sourceImageId: inspection.images[0] ? inspection.images[0]._id : null,
+        });
+      }
+    }
+
+    await inspection.save();
+    return res.status(200).json(inspection.toJSON());
+  } catch (err) {
+    return res.status(500).json({ detail: err.message });
+  }
+};
+
+module.exports = {
+  uploadPackagingImages,
+  listInspections,
+  getInspection,
+  getInspectionDeclarations,
+  triggerExtraction,
+};

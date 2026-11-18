@@ -144,7 +144,20 @@ const inspectionSchema = new mongoose.Schema(
           }));
         }
 
-        ret.extracted_declarations = ret.extractedDeclarations || [];
+        if (ret.extractedDeclarations) {
+          ret.extracted_declarations = ret.extractedDeclarations.map((d) => ({
+            id: d._id ? d._id.toString() : d.id,
+            field_type: d.fieldType,
+            raw_text: d.rawText,
+            parsed_value: d.parsedValue,
+            confidence: d.confidence,
+            primary_bbox: d.primaryBbox,
+            source_image_id: d.sourceImageId ? d.sourceImageId.toString() : null,
+            created_at: d.createdAt,
+          }));
+        } else {
+          ret.extracted_declarations = [];
+        }
         ret.findings = ret.findings || [];
         delete ret._id;
         delete ret.__v;
