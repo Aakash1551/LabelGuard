@@ -14,31 +14,17 @@ const validateConsumerCare = (extractedDeclarations, ocrTokens, avgConfidence) =
   const expectedFormat = 'Consumer Care Cell details including telephone number (toll-free/STD/mobile) and e-mail address for consumer complaints.';
 
   if (!careDecl) {
-    if (avgConfidence < 0.72) {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'CONSUMER_CARE',
-        status: 'REQUIRES_MANUAL_REVIEW',
-        detectedEvidence: 'None detected in OCR stream.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Consumer care cell details not detected, but label OCR confidence is below the verification threshold. Manual check required.',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Inspect packaging back panel for consumer care helpline and email.',
-      };
-    } else {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'CONSUMER_CARE',
-        status: 'FAIL',
-        detectedEvidence: 'Missing across all legible packaging panels.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Mandatory consumer care telephone and e-mail address not found, violating Rule 6(1)(n).',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Issue non-compliance notice under Rule 6(1)(n).',
-      };
-    }
+    return {
+      ruleCode: RULE_CODE,
+      fieldName: 'CONSUMER_CARE',
+      status: 'REQUIRES_MANUAL_REVIEW',
+      detectedEvidence: 'None detected in OCR stream.',
+      expectedFormat,
+      confidenceScore: avgConfidence || 0.0,
+      explanation: 'Consumer care cell details not detected in OCR text stream. Missing OCR evidence alone does not establish a statutory breach; manual check of packaging back panel required.',
+      legalCitation: LEGAL_CITATION,
+      manualReviewRecommendation: 'Inspect packaging back panel for consumer care helpline and email.',
+    };
   }
 
   const parsed = careDecl.parsedValue || careDecl.parsed_value || {};

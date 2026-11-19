@@ -18,57 +18,30 @@ const validateNetQuantity = (extractedDeclarations, ocrTokens, avgConfidence) =>
   const expectedFormatUnit = "Metric SI unit symbol strictly adhering to 'g' or 'kg' for mass, 'ml', 'mL', or 'l', 'L' for volume. Non-standard abbreviations such as 'gms', 'gm', 'kilos', 'ltrs' are strictly prohibited.";
 
   if (!qtyDecl) {
-    if (avgConfidence < 0.72) {
-      return [
-        {
-          ruleCode: RULE_CODE_QUANTITY,
-          fieldName: 'NET_QUANTITY',
-          status: 'REQUIRES_MANUAL_REVIEW',
-          detectedEvidence: 'None detected in OCR stream.',
-          expectedFormat: expectedFormatQuantity,
-          confidenceScore: avgConfidence,
-          explanation: 'Net quantity declaration was not detected, but image OCR confidence is below the threshold for definitive absence. Inspector verification required.',
-          legalCitation: LEGAL_CITATION_QUANTITY,
-          manualReviewRecommendation: 'Inspect packaging panels for net quantity stamp or declaration.',
-        },
-        {
-          ruleCode: RULE_CODE_UNIT,
-          fieldName: 'NET_QUANTITY_UNIT',
-          status: 'REQUIRES_MANUAL_REVIEW',
-          detectedEvidence: 'Unit undetermined.',
-          expectedFormat: expectedFormatUnit,
-          confidenceScore: avgConfidence,
-          explanation: 'Standard metric unit could not be verified because net quantity was not detected in OCR text.',
-          legalCitation: LEGAL_CITATION_UNIT,
-          manualReviewRecommendation: 'Verify unit symbol when reviewing net quantity.',
-        },
-      ];
-    } else {
-      return [
-        {
-          ruleCode: RULE_CODE_QUANTITY,
-          fieldName: 'NET_QUANTITY',
-          status: 'FAIL',
-          detectedEvidence: 'Missing across all legible packaging panels.',
-          expectedFormat: expectedFormatQuantity,
-          confidenceScore: avgConfidence,
-          explanation: 'Mandatory declaration of net quantity missing despite legible label text, violating Rule 6(1)(c).',
-          legalCitation: LEGAL_CITATION_QUANTITY,
-          manualReviewRecommendation: 'Issue non-compliance query for omitted net weight/volume.',
-        },
-        {
-          ruleCode: RULE_CODE_UNIT,
-          fieldName: 'NET_QUANTITY_UNIT',
-          status: 'FAIL',
-          detectedEvidence: 'No unit declared.',
-          expectedFormat: expectedFormatUnit,
-          confidenceScore: avgConfidence,
-          explanation: 'No metric unit symbol found on package.',
-          legalCitation: LEGAL_CITATION_UNIT,
-          manualReviewRecommendation: null,
-        },
-      ];
-    }
+    return [
+      {
+        ruleCode: RULE_CODE_QUANTITY,
+        fieldName: 'NET_QUANTITY',
+        status: 'REQUIRES_MANUAL_REVIEW',
+        detectedEvidence: 'None detected in OCR stream.',
+        expectedFormat: expectedFormatQuantity,
+        confidenceScore: avgConfidence || 0.0,
+        explanation: 'Net quantity declaration was not detected in OCR tokens. Missing OCR evidence alone does not establish a statutory breach; inspector verification required.',
+        legalCitation: LEGAL_CITATION_QUANTITY,
+        manualReviewRecommendation: 'Inspect packaging panels for net quantity stamp or declaration.',
+      },
+      {
+        ruleCode: RULE_CODE_UNIT,
+        fieldName: 'NET_QUANTITY_UNIT',
+        status: 'REQUIRES_MANUAL_REVIEW',
+        detectedEvidence: 'Unit undetermined.',
+        expectedFormat: expectedFormatUnit,
+        confidenceScore: avgConfidence || 0.0,
+        explanation: 'Standard metric unit could not be evaluated because net quantity was not detected in OCR text.',
+        legalCitation: LEGAL_CITATION_UNIT,
+        manualReviewRecommendation: 'Verify unit symbol when reviewing net quantity.',
+      },
+    ];
   }
 
   const parsed = qtyDecl.parsedValue || qtyDecl.parsed_value || {};

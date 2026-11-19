@@ -101,6 +101,8 @@ const uploadPackagingImages = async (req, res) => {
         panelType,
         widthPx: aiResult.processed_width || null,
         heightPx: aiResult.processed_height || null,
+        aiProcessingSuccess: aiResult.success !== false,
+        aiProcessingError: aiResult.error || null,
         ocrTokens,
       });
 
@@ -245,6 +247,14 @@ const triggerExtraction = async (req, res) => {
           sourceImageId: inspection.images[0] ? inspection.images[0]._id : null,
         });
       }
+    }
+
+    // Safety defense: if AI processing failed or 0 tokens extracted across all panels,
+    // ensure inspection status is REQUIRES_MANUAL_REVIEW
+    const totalTokens = inspection.images.reduce((sum, img) => sum + (img.ocrTokens ? img.ocrTokens.length : 0), 0);
+    const hasAiFailures = inspection.images.some((img) => img.aiProcessingSuccess === false);
+    if (totalTokens === 0 || hasAiFailures) {
+      inspection.status = 'REQUIRES_MANUAL_REVIEW';
     }
 
     await inspection.save();

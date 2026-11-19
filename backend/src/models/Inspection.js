@@ -21,6 +21,8 @@ const inspectionImageSchema = new mongoose.Schema({
   },
   widthPx: { type: Number },
   heightPx: { type: Number },
+  aiProcessingSuccess: { type: Boolean, default: true },
+  aiProcessingError: { type: String, default: null },
   ocrTokens: [ocrTokenSchema],
 }, { _id: true, timestamps: { createdAt: true, updatedAt: false } });
 
@@ -133,6 +135,8 @@ const inspectionSchema = new mongoose.Schema(
             panel_type: img.panelType,
             width_px: img.widthPx,
             height_px: img.heightPx,
+            ai_processing_success: img.aiProcessingSuccess !== false,
+            ai_processing_error: img.aiProcessingError || null,
             created_at: img.createdAt,
             ocr_tokens: (img.ocrTokens || []).map((t) => ({
               id: t._id ? t._id.toString() : t.id,

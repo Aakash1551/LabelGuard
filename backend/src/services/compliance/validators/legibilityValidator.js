@@ -9,6 +9,20 @@ const LEGAL_CITATION = 'The Legal Metrology (Packaged Commodities) Rules, 2011, 
 const validateLegibilityAndProminence = (images, ocrTokens, avgConfidence) => {
   const expectedFormat = 'All declarations must be conspicuous, legible, distinctly contrasted with background, and meet minimum statutory numeral/letter height in mm specified in Schedule II.';
 
+  if (!ocrTokens || ocrTokens.length === 0) {
+    return {
+      ruleCode: RULE_CODE,
+      fieldName: 'LEGIBILITY_CONTRAST',
+      status: 'REQUIRES_MANUAL_REVIEW',
+      detectedEvidence: 'Zero OCR tokens detected on uploaded packaging panels.',
+      expectedFormat,
+      confidenceScore: 0.0,
+      explanation: 'No OCR text detected across uploaded package panels. Automated determination of background contrast and font legibility is impossible; physical packaging review required.',
+      legalCitation: LEGAL_CITATION,
+      manualReviewRecommendation: 'Review physical package to verify that all statutory declarations are clearly printed and distinctly contrasted with background.',
+    };
+  }
+
   if (avgConfidence >= 0.80) {
     return {
       ruleCode: RULE_CODE,

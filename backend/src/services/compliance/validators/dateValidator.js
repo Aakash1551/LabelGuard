@@ -18,31 +18,17 @@ const validateDateOfManufacture = (extractedDeclarations, ocrTokens, avgConfiden
   const expectedFormat = 'Month and year of manufacture or pre-packing declared clearly (e.g. MM/YYYY, MM/YY, or Month Year).';
 
   if (!dateDecl) {
-    if (avgConfidence < 0.72) {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'MFG_DATE',
-        status: 'REQUIRES_MANUAL_REVIEW',
-        detectedEvidence: 'None detected in OCR stream.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Date of manufacture/packing was not detected, but label OCR confidence is below the threshold for definitive absence. Physical inspection required.',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Verify batch coding / manufacturing date stamp on crimp or gusset.',
-      };
-    } else {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'MFG_DATE',
-        status: 'FAIL',
-        detectedEvidence: 'Missing across all legible packaging panels.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Mandatory declaration of month and year of manufacture/packing missing, violating Rule 6(1)(d).',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Issue non-compliance notice for omitted manufacturing/packing date.',
-      };
-    }
+    return {
+      ruleCode: RULE_CODE,
+      fieldName: 'MFG_DATE',
+      status: 'REQUIRES_MANUAL_REVIEW',
+      detectedEvidence: 'None detected in OCR stream.',
+      expectedFormat,
+      confidenceScore: avgConfidence || 0.0,
+      explanation: 'Date of manufacture/packing was not detected in OCR text stream. Missing OCR evidence alone does not establish a statutory breach; physical inspection of batch coding / crimp / gusset required.',
+      legalCitation: LEGAL_CITATION,
+      manualReviewRecommendation: 'Verify batch coding / manufacturing date stamp on crimp or gusset.',
+    };
   }
 
   const parsed = dateDecl.parsedValue || dateDecl.parsed_value || {};

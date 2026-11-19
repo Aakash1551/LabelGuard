@@ -14,31 +14,17 @@ const validateManufacturer = (extractedDeclarations, ocrTokens, avgConfidence) =
   const expectedFormat = 'Complete name and physical address including city/state and 6-digit postal PIN code with role qualifier (e.g. Manufactured by, Packed by, or Imported by).';
 
   if (!mfgDecl) {
-    if (avgConfidence < 0.72) {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'MANUFACTURER_ADDRESS',
-        status: 'REQUIRES_MANUAL_REVIEW',
-        detectedEvidence: 'None detected in OCR stream.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Manufacturer/packer declaration was not detected, but overall label OCR confidence is below the statutory certainty threshold. Visual verification required.',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Verify physical packaging panel for printed manufacturer or packer address.',
-      };
-    } else {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'MANUFACTURER_ADDRESS',
-        status: 'FAIL',
-        detectedEvidence: 'Missing across all legible packaging panels.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Mandatory declaration of manufacturer/packer name and address not found despite legible label OCR text.',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Flag for potential non-compliance notice under Section 36 of Legal Metrology Act.',
-      };
-    }
+    return {
+      ruleCode: RULE_CODE,
+      fieldName: 'MANUFACTURER_ADDRESS',
+      status: 'REQUIRES_MANUAL_REVIEW',
+      detectedEvidence: 'None detected in OCR stream.',
+      expectedFormat,
+      confidenceScore: avgConfidence || 0.0,
+      explanation: 'Manufacturer/packer declaration was not detected in OCR stream. Missing OCR evidence alone does not establish a statutory breach; physical packaging verification required.',
+      legalCitation: LEGAL_CITATION,
+      manualReviewRecommendation: 'Verify physical packaging panel for printed manufacturer or packer address.',
+    };
   }
 
   const parsed = mfgDecl.parsedValue || mfgDecl.parsed_value || {};

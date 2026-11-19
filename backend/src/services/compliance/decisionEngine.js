@@ -32,7 +32,7 @@ const evaluateInspectionCompliance = async (inspection, product = null) => {
 
   const avgConfidence = allTokens.length > 0
     ? totalConfidence / allTokens.length
-    : 0.85;
+    : 0.0;
 
   const declarations = inspection.extractedDeclarations || [];
 
@@ -93,7 +93,11 @@ const evaluateInspectionCompliance = async (inspection, product = null) => {
   const hasFailures = findings.some((f) => f.status === 'FAIL');
   const hasManualReview = findings.some((f) => f.status === 'REQUIRES_MANUAL_REVIEW');
 
-  if (hasFailures) {
+  // Critical safety guarantee:
+  // Zero OCR tokens, image processing failure, or absence of evidence alone must NEVER produce POTENTIALLY_NON_COMPLIANT.
+  if (allTokens.length === 0) {
+    overallStatus = 'REQUIRES_MANUAL_REVIEW';
+  } else if (hasFailures) {
     overallStatus = 'POTENTIALLY_NON_COMPLIANT';
   } else if (hasManualReview) {
     overallStatus = 'REQUIRES_MANUAL_REVIEW';

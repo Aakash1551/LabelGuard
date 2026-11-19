@@ -44,29 +44,17 @@ const validateCommodityName = (product, ocrTokens, avgConfidence) => {
       legalCitation: LEGAL_CITATION,
       manualReviewRecommendation: null,
     };
-  } else if (avgConfidence < 0.72) {
-    return {
-      ruleCode: RULE_CODE,
-      fieldName: 'COMMODITY_NAME',
-      status: 'REQUIRES_MANUAL_REVIEW',
-      detectedEvidence: 'Uncertain detection in OCR tokens.',
-      expectedFormat,
-      confidenceScore: avgConfidence,
-      explanation: 'Generic commodity name could not be automatically confirmed from principal display panel. Visual verification required.',
-      legalCitation: LEGAL_CITATION,
-      manualReviewRecommendation: 'Verify generic description on package front panel.',
-    };
   } else {
     return {
       ruleCode: RULE_CODE,
       fieldName: 'COMMODITY_NAME',
-      status: 'FAIL',
-      detectedEvidence: 'Missing generic commodity identity.',
+      status: 'REQUIRES_MANUAL_REVIEW',
+      detectedEvidence: foundEvidence || 'Unconfirmed in OCR tokens.',
       expectedFormat,
-      confidenceScore: avgConfidence,
-      explanation: 'Package fails to declare common or generic commodity name as required under Rule 6(1)(b).',
+      confidenceScore: avgConfidence || 0.0,
+      explanation: 'Generic commodity name could not be automatically confirmed from principal display panel. Visual verification required.',
       legalCitation: LEGAL_CITATION,
-      manualReviewRecommendation: 'Check if trademarked brand name is used without generic product category.',
+      manualReviewRecommendation: 'Verify generic description on package front panel.',
     };
   }
 };

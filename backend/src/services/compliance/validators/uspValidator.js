@@ -47,31 +47,17 @@ const validateUnitSalePrice = (extractedDeclarations, ocrTokens, avgConfidence) 
 
   // If not declared:
   if (isMandatoryThresholdExceeded) {
-    if (avgConfidence < 0.72) {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'UNIT_SALE_PRICE',
-        status: 'REQUIRES_MANUAL_REVIEW',
-        detectedEvidence: 'None detected.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Package quantity exceeds 1 kg/1 L threshold making Unit Sale Price mandatory, but OCR confidence is below verification threshold. Manual check required.',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Verify package pricing label for Unit Sale Price print.',
-      };
-    } else {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'UNIT_SALE_PRICE',
-        status: 'FAIL',
-        detectedEvidence: 'Missing on package > 1 kg / 1 L.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Package net quantity exceeds 1 kg/1 L threshold, but Unit Sale Price is omitted, violating Rule 6(1)(f).',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Issue non-compliance query for missing statutory USP on bulk package.',
-      };
-    }
+    return {
+      ruleCode: RULE_CODE,
+      fieldName: 'UNIT_SALE_PRICE',
+      status: 'REQUIRES_MANUAL_REVIEW',
+      detectedEvidence: 'None detected.',
+      expectedFormat,
+      confidenceScore: avgConfidence || 0.0,
+      explanation: 'Package net quantity exceeds 1 kg/1 L threshold. Unit Sale Price not detected in OCR stream; visual verification of bulk price label required before determining compliance.',
+      legalCitation: LEGAL_CITATION,
+      manualReviewRecommendation: 'Verify package pricing label for Unit Sale Price print.',
+    };
   }
 
   // For smaller packages (<= 1kg / 1L), USP is optional or conditionally exempted

@@ -1,7 +1,7 @@
 const axios = require('axios');
 const path = require('path');
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8001';
+const getAiServiceUrl = () => process.env.AI_SERVICE_URL || 'http://127.0.0.1:8001';
 
 /**
  * Invokes Python AI microservice to run OpenCV preprocessing and RapidOCR
@@ -13,7 +13,7 @@ const processImageWithAI = async (rawImagePath, prepImagePath) => {
 
   try {
     const response = await axios.post(
-      `${AI_SERVICE_URL}/api/v1/process-image`,
+      `${getAiServiceUrl()}/api/v1/process-image`,
       {
         image_path: absoluteRawPath,
         output_path: absolutePrepPath,
@@ -41,7 +41,7 @@ const processImageWithAI = async (rawImagePath, prepImagePath) => {
 const extractDeclarationsFromTokens = async (tokens) => {
   try {
     const response = await axios.post(
-      `${AI_SERVICE_URL}/api/v1/extract-declarations`,
+      `${getAiServiceUrl()}/api/v1/extract-declarations`,
       { tokens },
       { timeout: 15000 }
     );
@@ -58,7 +58,7 @@ const extractDeclarationsFromTokens = async (tokens) => {
 
 const checkAIHealth = async () => {
   try {
-    const res = await axios.get(`${AI_SERVICE_URL}/health`, { timeout: 3000 });
+    const res = await axios.get(`${getAiServiceUrl()}/health`, { timeout: 3000 });
     return res.data;
   } catch (err) {
     return { status: 'offline', error: err.message };

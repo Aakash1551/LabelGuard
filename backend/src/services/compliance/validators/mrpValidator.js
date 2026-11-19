@@ -14,31 +14,17 @@ const validateMRP = (extractedDeclarations, ocrTokens, avgConfidence) => {
   const expectedFormat = "Mandatory statutory format: 'Maximum or Max. Retail Price Rs. or ₹ .... inclusive of all taxes' or 'MRP Rs. / ₹ .... incl. of all taxes'.";
 
   if (!mrpDecl) {
-    if (avgConfidence < 0.72) {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'MAX_RETAIL_PRICE',
-        status: 'REQUIRES_MANUAL_REVIEW',
-        detectedEvidence: 'None detected in OCR stream.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Maximum Retail Price declaration was not detected, but label OCR confidence is below statutory verification threshold. Visual inspection required.',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Verify retail pricing panel for stamped or printed MRP.',
-      };
-    } else {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'MAX_RETAIL_PRICE',
-        status: 'FAIL',
-        detectedEvidence: 'Missing across all legible packaging panels.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Mandatory declaration of Maximum Retail Price (MRP) not found on package, violating Rule 6(1)(e).',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Issue non-compliance notice under Section 36 for missing MRP.',
-      };
-    }
+    return {
+      ruleCode: RULE_CODE,
+      fieldName: 'MAX_RETAIL_PRICE',
+      status: 'REQUIRES_MANUAL_REVIEW',
+      detectedEvidence: 'None detected in OCR stream.',
+      expectedFormat,
+      confidenceScore: avgConfidence || 0.0,
+      explanation: 'Maximum Retail Price declaration was not detected in OCR text stream. Missing OCR evidence alone does not establish a statutory breach; visual inspection of retail pricing panel required.',
+      legalCitation: LEGAL_CITATION,
+      manualReviewRecommendation: 'Verify retail pricing panel for stamped or printed MRP.',
+    };
   }
 
   const parsed = mrpDecl.parsedValue || mrpDecl.parsed_value || {};

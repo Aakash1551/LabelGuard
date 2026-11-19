@@ -14,31 +14,17 @@ const validateCountryOfOrigin = (extractedDeclarations, ocrTokens, avgConfidence
   const expectedFormat = "Unambiguous declaration of the country of origin or manufacture (e.g. 'Country of Origin: India', 'Made in India').";
 
   if (!originDecl) {
-    if (avgConfidence < 0.72) {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'COUNTRY_OF_ORIGIN',
-        status: 'REQUIRES_MANUAL_REVIEW',
-        detectedEvidence: 'None detected in OCR stream.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Country of origin was not detected, but label OCR confidence is below the threshold for definitive absence. Inspector review required.',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Inspect packaging panels for Country of Origin mark.',
-      };
-    } else {
-      return {
-        ruleCode: RULE_CODE,
-        fieldName: 'COUNTRY_OF_ORIGIN',
-        status: 'FAIL',
-        detectedEvidence: 'Missing across legible label text.',
-        expectedFormat,
-        confidenceScore: avgConfidence,
-        explanation: 'Mandatory country of origin declaration not found on package, violating Rule 6(1)(aa).',
-        legalCitation: LEGAL_CITATION,
-        manualReviewRecommendation: 'Verify whether product is imported or exempted under specific trade notifications.',
-      };
-    }
+    return {
+      ruleCode: RULE_CODE,
+      fieldName: 'COUNTRY_OF_ORIGIN',
+      status: 'REQUIRES_MANUAL_REVIEW',
+      detectedEvidence: 'None detected in OCR stream.',
+      expectedFormat,
+      confidenceScore: avgConfidence || 0.0,
+      explanation: 'Country of Origin declaration was not detected in OCR text stream. Missing OCR evidence alone does not establish a statutory breach; inspector verification required.',
+      legalCitation: LEGAL_CITATION,
+      manualReviewRecommendation: 'Inspect packaging panels for Country of Origin mark.',
+    };
   }
 
   const parsed = originDecl.parsedValue || originDecl.parsed_value || {};
