@@ -271,11 +271,10 @@ export const NewInspection = () => {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-              isDragging
+            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging
                 ? 'border-indigo-500 bg-indigo-50/60'
                 : 'border-slate-300 hover:border-indigo-400 bg-slate-50/50 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <input
               ref={fileInputRef}

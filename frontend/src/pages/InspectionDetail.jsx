@@ -18,7 +18,10 @@ import {
   Package,
   CheckCircle2,
   Lock,
-  Loader2
+  Loader2,
+  Download,
+  Printer,
+  FileSpreadsheet
 } from 'lucide-react';
 import { getInspection, evaluateInspection, triggerExtraction } from '../api/inspections';
 import { useAuth } from '../context/AuthContext';
@@ -27,6 +30,8 @@ import { OcrImageViewer } from '../components/inspection/OcrImageViewer';
 import { DeclarationsPanel } from '../components/inspection/DeclarationsPanel';
 import { FindingsPanel } from '../components/inspection/FindingsPanel';
 import { ManualOverrideModal } from '../components/inspection/ManualOverrideModal';
+import { ExportReportModal } from '../components/inspection/ExportReportModal';
+import { PrintableReport } from '../components/inspection/PrintableReport';
 
 export const InspectionDetail = () => {
   const { id } = useParams();
@@ -47,6 +52,7 @@ export const InspectionDetail = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState(null);
   const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Active Tab
   const [activeTab, setActiveTab] = useState('COMMAND_CENTER'); // 'COMMAND_CENTER' | 'DECLARATIONS' | 'FINDINGS' | 'RAW_TOKENS'
@@ -190,11 +196,27 @@ export const InspectionDetail = () => {
               <FileText className="w-3.5 h-3.5" />
               {inspection.extracted_declarations?.length || 0} Declarations Extracted
             </span>
+            {inspection.report && (
+              <span className="flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Report: {inspection.report.report_number}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Action Buttons Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Export & PDF Report */}
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+            title="Download PDF report, verify SHA-256 integrity, or export JSON/CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export & Report
+          </button>
+
           {/* Run / Re-run Compliance Evaluation */}
           <button
             onClick={handleRunEvaluation}
@@ -462,6 +484,18 @@ export const InspectionDetail = () => {
           setActionSuccessMessage('Compliance determination overridden successfully with audit record.');
         }}
       />
+
+      {/* Export, PDF Report & SHA-256 Verification Modal */}
+      <ExportReportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        inspection={inspection}
+        onReportGenerated={fetchDossier}
+        onPrint={() => window.print()}
+      />
+
+      {/* Clean Print Layout for Thermal / A4 Print Engine */}
+      <PrintableReport inspection={inspection} />
     </div>
   );
 };

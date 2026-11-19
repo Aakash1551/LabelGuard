@@ -177,6 +177,20 @@ const inspectionSchema = new mongoose.Schema(
         } else {
           ret.findings = [];
         }
+
+        if (ret.report && ret.report.reportNumber) {
+          ret.report = {
+            report_number: ret.report.reportNumber,
+            pdf_file_path: ret.report.pdfFilePath,
+            file_size_bytes: ret.report.fileSizeBytes,
+            sha256_hash: ret.report.sha256Hash,
+            generated_by_id: ret.report.generatedById ? ret.report.generatedById.toString() : null,
+            created_at: ret.report.createdAt,
+          };
+        } else {
+          ret.report = null;
+        }
+
         delete ret._id;
         delete ret.__v;
         return ret;

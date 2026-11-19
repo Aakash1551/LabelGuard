@@ -13,6 +13,13 @@ const {
   getInspectionFindings,
   overrideCompliance,
 } = require('../controllers/complianceController');
+const {
+  generateReport,
+  downloadReport,
+  verifyReport,
+  exportDossierJson,
+  exportDossierCsv,
+} = require('../controllers/reportController');
 const { protect } = require('../middleware/auth');
 const { upload } = require('../middleware/upload');
 
@@ -30,5 +37,12 @@ router.post('/:id/evaluate', protect, evaluateCompliance);
 router.get('/:id/compliance', protect, getComplianceSummary);
 router.get('/:id/findings', protect, getInspectionFindings);
 router.put('/:id/override', protect, overrideCompliance);
+
+// Step 7.4 Inspection Report & Export Endpoints
+router.post('/:id/report', protect, generateReport);
+router.get('/:id/report/download', protect, downloadReport);
+router.post('/:id/report/verify', protect, verifyReport);
+router.get('/:id/export/json', protect, exportDossierJson);
+router.get('/:id/export/csv', protect, exportDossierCsv);
 
 module.exports = router;
