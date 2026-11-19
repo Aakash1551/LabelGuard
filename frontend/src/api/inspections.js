@@ -15,8 +15,34 @@ export const getInspection = async (id) => {
   return response.data;
 };
 
+export const uploadPackagingImages = async (formData, onUploadProgress) => {
+  const response = await api.post('/inspections/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    onUploadProgress,
+    timeout: 120000, // 2 minutes for multi-image processing with OCR
+  });
+  return response.data;
+};
+
+export const triggerExtraction = async (id) => {
+  const response = await api.post(`/inspections/${id}/extract`);
+  return response.data;
+};
+
+export const getInspectionDeclarations = async (id) => {
+  const response = await api.get(`/inspections/${id}/declarations`);
+  return response.data;
+};
+
 export const evaluateInspection = async (id) => {
   const response = await api.post(`/inspections/${id}/evaluate`);
+  return response.data;
+};
+
+export const getComplianceSummary = async (id) => {
+  const response = await api.get(`/inspections/${id}/compliance`);
   return response.data;
 };
 
